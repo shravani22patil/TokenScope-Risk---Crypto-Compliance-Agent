@@ -1,0 +1,177 @@
+"""
+services/exporter.py
+--------------------
+Generates downloadable compliance memos in Markdown format.
+"""
+
+from __future__ import annotations
+from datetime import datetime
+from typing import Any
+
+
+RISK_COLORS = {
+    "high": "🔴",
+    "medium": "🟡",
+    "review": "🟢",
+    "strong": "✅",
+}
+
+SEV_ICONS = {
+    "high": "🚨",
+    "medium": "⚠️",
+    "low": "ℹ️",
+}
+
+
+def generate_markdown_memo(report: dict) -> str:
+    """Convert a full report dict into a formatted Markdown compliance memo."""
+    scoring = report.get("scoring", {})
+    risk = scoring.get("risk_level", "unknown")
+    icon = RISK_COLORS.get(risk, "⬜")
+    rec = scoring.get("recommendation", "—")
+    total = scoring.get("total_score", 0)
+    created = report.get("created_at", "")[:10]
+
+    lines = [
+        f"# TokenScope Risk — Due-Diligence Memo",
+        f"",
+        f"**Project:** {report.get('project_name', '—')}",
+        f"**Ticker:** {report.get('token_ticker') or '—'}",
+        f"**Analysis Date:** {created}",
+        f"**Report ID:** `{report.get('report_id', '—')}`",
+        f"{'> ⚠️ DEMO DATA — Simulated for portfolio demonstration' if report.get('is_demo') else ''}",
+        f"",
+        f"---",
+        f"",
+        f"## Executive Summary",
+        f"",
+        report.get("executive_summary", "_Not available._"),
+        f"",
+        f"---",
+        f"",
+        f"## Risk Assessment",
+        f"",
+        f"| Dimension | Score | Max |",
+        f"|---|---|---|",
+    ]
+
+    dims = [
+        ("team_transparency", "Team Transparency"),
+        ("documentation_quality", "Documentation Quality"),
+        ("token_utility_clarity", "Token Utility Clarity"),
+        ("github_engineering_signal", "GitHub / Engineering Signal"),
+        ("ecosystem_credibility", "Ecosystem Credibility"),
+        ("research_completeness", "Research Completeness"),
+        ("hype_penalty", "Hype / Inconsistency Penalty"),
+    ]
+
+    for key, label in dims:
+        dim = scoring.get(key, {})
+        lines.append(f"| {label} | {dim.get('score', '—')} | {dim.get('max_score', '—')} |")
+
+    lines += [
+        f"| **TOTAL** | **{total}** | **85** |",
+        f"",
+        f"**Risk Level:** {icon} {risk.upper()}",
+        f"**Recommendation:** {rec}",
+        f"",
+        f"---",
+        f"",
+        f"## Project Profile",
+        f"",
+        f"### Summary",
+        report.get("project_summary", "_Not available._"),
+        f"",
+        f"### Token Utility",
+        report.get("token_utility_summary", "_Not available._"),
+        f"",
+        f"---",
+        f"",
+        f"## Red Flags",
+        f"",
+    ]
+
+    flags = report.get("red_flags", [])
+    if flags:
+        for flag in flags:
+            sev = SEV_ICONS.get(flag.get("severity", "low"), "ℹ️")
+            lines.append(f"- {sev} **[{flag.get('category', '?')}]** {flag.get('description', '')}")
+    else:
+        lines.append("_No red flags identified._")
+
+    lines += [
+        f"",
+        f"---",
+        f"",
+        f"## Credibility Indicators",
+        f"",
+    ]
+    for ci in report.get("credibility_indicators", []):
+        lines.append(f"- ✓ {ci}")
+
+    lines += [
+        f"",
+        f"---",
+        f"",
+        f"## Missing Information",
+        f"",
+    ]
+    for mi in report.get("missing_information", []):
+        lines.append(f"- ❌ {mi}")
+
+    lines += [
+        f"",
+        f"---",
+        f"",
+        f"## Source Coverage",
+        f"",
+        f"**Coverage:** {report.get('source_coverage_pct', 0):.0f}%",
+        f"",
+        f"| Source | Status |",
+        f"|---|---|",
+    ]
+
+    for src in report.get("sources", []):
+        status_icon = {"fetched": "✅", "failed": "❌", "skipped": "⏭️", "simulated": "🔵"}.get(
+            src.get("status", ""), "?"
+        )
+        lines.append(f"| {src.get('source_type', '?')} | {status_icon} {src.get('status', '?')} |")
+
+    gh = report.get("github_signals")
+    if gh:
+        lines += [
+            f"",
+            f"---",
+            f"",
+            f"## GitHub Engineering Signals",
+            f"",
+            f"| Metric | Value |",
+            f"|---|---|",
+            f"| Stars | {gh.get('stars', '—')} |",
+            f"| Forks | {gh.get('forks', '—')} |",
+            f"| Open Issues | {gh.get('open_issues', '—')} |",
+            f"| Last Commit | {gh.get('last_commit_date', '—')} |",
+            f"| Contributors | {gh.get('contributor_count', '—')} |",
+            f"| Language | {gh.get('language', '—')} |",
+            f"| Signal Strength | {gh.get('signal_strength', '—').upper()} |",
+        ]
+        if gh.get("notes"):
+            lines.append("")
+            for note in gh["notes"]:
+                lines.append(f"- {note}")
+
+    lines += [
+        f"",
+        f"---",
+        f"",
+        f"## Analyst Notes",
+        f"",
+        report.get("analyst_notes", "_None._"),
+        f"",
+        f"---",
+        f"",
+        f"*Generated by TokenScope Risk · {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}*",
+        f"*This memo is for internal decision-support only. Not financial or legal advice.*",
+    ]
+
+    return "\n".join(lines)
