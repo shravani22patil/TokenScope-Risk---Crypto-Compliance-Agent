@@ -143,7 +143,7 @@ Risk tiers: **0–29** = High Risk · **30–54** = Medium · **55–74** = Revi
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/yourname/tokenscope-risk.git
+git clone https://github.com/shravani22patil/tokenscope-risk.git
 cd tokenscope-risk
 
 # 2. Create virtual environment
